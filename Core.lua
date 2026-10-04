@@ -1,8 +1,8 @@
 local _, MPU = ...
 
 local panel
-local ICON, GAP, WIDTH = 28, 6, 360
-local PER_ROW = math.floor((WIDTH + GAP) / (ICON + GAP))
+local ICON, WIDTH = 28, 360
+local COL_W = math.floor(WIDTH / #MPU.CATEGORIES)
 
 local function ClassColored(token, text)
     local c = RAID_CLASS_COLORS[token]
@@ -156,6 +156,8 @@ local function Refresh()
         local fs = AcquireText(nText)
         fs:ClearAllPoints()
         fs:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -y)
+        fs:SetWidth(WIDTH)
+        fs:SetJustifyH("LEFT")
         fs:SetText(str)
         fs:Show()
         y = y + fs:GetStringHeight() + (gapAfter or 4)
@@ -165,6 +167,18 @@ local function Refresh()
     AddText(Summary(GetPartyPlayers()), 10)
     AddText("|cffffffffApplicants|r")
 
+    for col, cat in ipairs(MPU.CATEGORIES) do
+        nText = nText + 1
+        local fs = AcquireText(nText)
+        fs:ClearAllPoints()
+        fs:SetPoint("TOPLEFT", panel.content, "TOPLEFT", (col - 1) * COL_W, -y)
+        fs:SetWidth(COL_W)
+        fs:SetJustifyH("CENTER")
+        fs:SetText("|cffffd100" .. cat.short .. "|r")
+        fs:Show()
+    end
+    y = y + 16
+
     local applicants = GetApplicantPlayers()
     if #applicants == 0 then AddText("(none)") end
 
@@ -173,26 +187,23 @@ local function Refresh()
         local label = specName and ("%s %s"):format(specName, p.localized or p.class) or (p.localized or p.class)
         AddText(ClassColored(p.class, ("%s (%s)"):format(p.name or "?", label)), 14)
 
-        local util, col = GetUtility(p), 0
-        local rowTop = y
-        for _, cat in ipairs(MPU.CATEGORIES) do
-            for _, entry in ipairs(util[cat.key] or {}) do
-                if col == PER_ROW then
-                    col = 0
-                    rowTop = rowTop + ICON + 16
-                end
+        local util, tallest = GetUtility(p), 0
+        for col, cat in ipairs(MPU.CATEGORIES) do
+            local list = util[cat.key] or {}
+            tallest = math.max(tallest, #list)
+            for row, entry in ipairs(list) do
                 nIcon = nIcon + 1
                 local btn = AcquireIcon(nIcon)
                 btn.entry = entry
                 btn.texture:SetTexture(C_Spell.GetSpellTexture(entry.id))
                 btn.cd:SetText(FormatCooldown(entry.cd))
                 btn:ClearAllPoints()
-                btn:SetPoint("TOPLEFT", panel.content, "TOPLEFT", col * (ICON + GAP), -rowTop)
+                btn:SetPoint("TOPLEFT", panel.content, "TOPLEFT",
+                    (col - 1) * COL_W + (COL_W - ICON) / 2, -(y + (row - 1) * (ICON + 14)))
                 btn:Show()
-                col = col + 1
             end
         end
-        y = rowTop + ICON + 14
+        y = y + math.max(tallest, 1) * (ICON + 14) + 6
     end
 
     panel.content:SetHeight(y)

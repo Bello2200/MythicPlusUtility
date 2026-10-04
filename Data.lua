@@ -2,13 +2,13 @@ local _, MPU = ...
 
 -- Category display order and labels.
 MPU.CATEGORIES = {
-    { key = "bres",      label = "Battle Res" },
-    { key = "lust",      label = "Bloodlust" },
-    { key = "interrupt", label = "Interrupt" },
-    { key = "dispel",    label = "Dispel" },
-    { key = "soothe",    label = "Soothe/Purge" },
-    { key = "defensive", label = "Group Defensive" },
-    { key = "buff",      label = "Raid Buff" },
+    { key = "bres",      label = "Battle Res",      short = "B-Res" },
+    { key = "lust",      label = "Bloodlust",       short = "Lust" },
+    { key = "interrupt", label = "Interrupt",       short = "Kick" },
+    { key = "dispel",    label = "Dispel",          short = "Dispel" },
+    { key = "soothe",    label = "Soothe/Purge",    short = "Purge" },
+    { key = "defensive", label = "Group Defensive", short = "Defs" },
+    { key = "buff",      label = "Raid Buff",       short = "Buff" },
 }
 
 -- E(spellID, baseCooldownSeconds|nil, dispelInfo|nil, specID...) ; no specs means all specs.
