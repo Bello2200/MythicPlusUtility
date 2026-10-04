@@ -1,7 +1,7 @@
 ## Interface: 120100
 ## Title: Mythic Plus Utility
 ## Notes: Shows combat res, bloodlust, interrupts (with cooldowns), dispels and buffs for every applicant in the Group Finder.
-## Author: kamil
+## Author: Bello
 ## Version: 0.1.0
 
 Data.lua
