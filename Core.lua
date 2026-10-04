@@ -38,7 +38,8 @@ local function GetUtility(p)
     if not util then return result end
     for _, cat in ipairs(MPU.CATEGORIES) do
         for _, entry in ipairs(util[cat.key] or {}) do
-            if SpecMatches(entry, p.specID, p.role) then
+            local known = not (p.isPlayer and entry.talent) or IsPlayerSpell(entry.id)
+            if known and SpecMatches(entry, p.specID, p.role) then
                 result[cat.key] = result[cat.key] or {}
                 table.insert(result[cat.key], entry)
             end
@@ -83,7 +84,7 @@ local function GetPartyPlayers()
             local role = UnitGroupRolesAssigned(unit)
             players[#players + 1] = {
                 name = UnitName(unit), class = class, localized = localized,
-                specID = specID, role = role ~= "NONE" and role or nil,
+                isPlayer = unit == "player", specID = specID, role = role ~= "NONE" and role or nil,
             }
         end
     end
@@ -110,6 +111,10 @@ local function ShowTooltip(btn)
     local entry = btn.entry
     GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
     GameTooltip:SetSpellByID(entry.id)
+    if entry.talent and not btn.confirmed then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Talent: may not be selected", 1, 0.6, 0.2)
+    end
     if entry.info then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("Affects: " .. entry.info, 0.4, 1, 0.4, true)
@@ -163,10 +168,6 @@ local function Refresh()
         y = y + fs:GetStringHeight() + (gapAfter or 4)
     end
 
-    AddText("|cffffffffCurrent group|r")
-    AddText(Summary(GetPartyPlayers()), 10)
-    AddText("|cffffffffApplicants|r")
-
     for col, cat in ipairs(MPU.CATEGORIES) do
         nText = nText + 1
         local fs = AcquireText(nText)
@@ -179,10 +180,7 @@ local function Refresh()
     end
     y = y + 16
 
-    local applicants = GetApplicantPlayers()
-    if #applicants == 0 then AddText("(none)") end
-
-    for _, p in ipairs(applicants) do
+    local function AddPlayer(p)
         local specName = p.specID and select(2, GetSpecializationInfoByID(p.specID))
         local label = specName and ("%s %s"):format(specName, p.localized or p.class) or (p.localized or p.class)
         AddText(ClassColored(p.class, ("%s (%s)"):format(p.name or "?", label)), 14)
@@ -195,6 +193,8 @@ local function Refresh()
                 nIcon = nIcon + 1
                 local btn = AcquireIcon(nIcon)
                 btn.entry = entry
+                btn.confirmed = p.isPlayer
+                btn:SetAlpha(entry.talent and not p.isPlayer and 0.45 or 1)
                 btn.texture:SetTexture(C_Spell.GetSpellTexture(entry.id))
                 btn.cd:SetText(FormatCooldown(entry.cd))
                 btn:ClearAllPoints()
@@ -205,6 +205,16 @@ local function Refresh()
         end
         y = y + math.max(tallest, 1) * (ICON + 14) + 6
     end
+
+    AddText("|cffffffffCurrent group|r", 2)
+    local party = GetPartyPlayers()
+    AddText(Summary(party), 10)
+    for _, p in ipairs(party) do AddPlayer(p) end
+
+    AddText("|cffffffffApplicants|r", 10)
+    local applicants = GetApplicantPlayers()
+    if #applicants == 0 then AddText("(none)") end
+    for _, p in ipairs(applicants) do AddPlayer(p) end
 
     panel.content:SetHeight(y)
 end
