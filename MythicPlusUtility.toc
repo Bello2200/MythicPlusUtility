@@ -2,7 +2,7 @@
 ## Title: Mythic Plus Utility
 ## Notes: Shows combat res, bloodlust, interrupts (with cooldowns), dispels and buffs for every applicant in the Group Finder.
 ## Author: Bello
-## Version: 0.4.0
+## Version: 0.5.0
 
 Data.lua
 Core.lua

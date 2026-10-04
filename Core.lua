@@ -1,7 +1,7 @@
 local _, MPU = ...
 
 local panel
-local ICON, WIDTH = 28, 360
+local ICON, SMALL, WIDTH = 28, 20, 360
 local COL_W = math.floor(WIDTH / #MPU.CATEGORIES)
 
 local function ClassColored(token, text)
@@ -91,26 +91,14 @@ local function GetPartyPlayers()
     return players
 end
 
-local function Summary(players)
-    local have = {}
-    for _, p in ipairs(players) do
-        for key in pairs(GetUtility(p)) do
-            have[key] = (have[key] or 0) + 1
-        end
-    end
-    local out = {}
-    for _, cat in ipairs(MPU.CATEGORIES) do
-        local n = have[cat.key]
-        out[#out + 1] = n and ("|cff00ff00%s: %d|r"):format(cat.label, n)
-            or ("|cffff4040%s: missing|r"):format(cat.label)
-    end
-    return table.concat(out, "  ")
-end
-
 local function ShowTooltip(btn)
     local entry = btn.entry
     GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
     GameTooltip:SetSpellByID(entry.id)
+    if btn.who then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(table.concat(btn.who, ", "), 1, 1, 1, true)
+    end
     if entry.talent and not btn.confirmed then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("Talent: may not be selected", 1, 0.6, 0.2)
@@ -193,6 +181,8 @@ local function Refresh()
                 nIcon = nIcon + 1
                 local btn = AcquireIcon(nIcon)
                 btn.entry = entry
+                btn.who = nil
+                btn:SetSize(ICON, ICON)
                 btn.confirmed = p.isPlayer
                 btn:SetAlpha(entry.talent and not p.isPlayer and 0.45 or 1)
                 btn.texture:SetTexture(C_Spell.GetSpellTexture(entry.id))
@@ -206,10 +196,51 @@ local function Refresh()
         y = y + math.max(tallest, 1) * (ICON + 14) + 6
     end
 
+    -- One deduplicated icon per ability for the whole group; owners are listed in the tooltip.
+    local function AddGroup(party)
+        local byCat = {}
+        for _, p in ipairs(party) do
+            for key, list in pairs(GetUtility(p)) do
+                byCat[key] = byCat[key] or {}
+                for _, entry in ipairs(list) do
+                    local slot
+                    for _, s in ipairs(byCat[key]) do
+                        if s.entry.id == entry.id then slot = s break end
+                    end
+                    if not slot then
+                        slot = { entry = entry, who = {} }
+                        table.insert(byCat[key], slot)
+                    end
+                    table.insert(slot.who, ClassColored(p.class, p.name or "?"))
+                    slot.confirmed = slot.confirmed or p.isPlayer
+                end
+            end
+        end
+
+        local perRow, rows = math.max(1, math.floor(COL_W / SMALL)), 1
+        for col, cat in ipairs(MPU.CATEGORIES) do
+            local list = byCat[cat.key] or {}
+            rows = math.max(rows, math.ceil(#list / perRow))
+            for i, slot in ipairs(list) do
+                nIcon = nIcon + 1
+                local btn = AcquireIcon(nIcon)
+                btn.entry, btn.who, btn.confirmed = slot.entry, slot.who, slot.confirmed
+                btn:SetSize(SMALL, SMALL)
+                btn:SetAlpha(slot.entry.talent and not slot.confirmed and 0.45 or 1)
+                btn.texture:SetTexture(C_Spell.GetSpellTexture(slot.entry.id))
+                btn.cd:SetText("")
+                btn:ClearAllPoints()
+                btn:SetPoint("TOPLEFT", panel.content, "TOPLEFT",
+                    (col - 1) * COL_W + ((i - 1) % perRow) * SMALL,
+                    -(y + math.floor((i - 1) / perRow) * (SMALL + 2)))
+                btn:Show()
+            end
+        end
+        y = y + rows * (SMALL + 2) + 8
+    end
+
     AddText("|cffffffffCurrent group|r", 2)
-    local party = GetPartyPlayers()
-    AddText(Summary(party), 10)
-    for _, p in ipairs(party) do AddPlayer(p) end
+    AddGroup(GetPartyPlayers())
 
     AddText("|cffffffffApplicants|r", 10)
     local applicants = GetApplicantPlayers()
